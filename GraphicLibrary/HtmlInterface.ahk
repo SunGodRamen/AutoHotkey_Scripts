@@ -1,8 +1,9 @@
-;Include hash library
-#Include C:\Users\avons\Code\AutoHotkey_Scripts\Util\Hash.ahk
+; HtmlInterface Class:
+; This class encapsulates the functionality of creating, managing, and interacting with HTML content within a GUI.
+; The class allows customization of dimensions, positioning, and transparency. It includes events for navigation control
+; and relies on specific HTML, CSS, and JS files provided in the directory.
 
 class HtmlInterface {
-    EventSinks := {DISPID_BEFORENAVIGATE2: "BeforeNavigate2"}
     Title := 
     GUIID :=
     Dim_X := 1600
@@ -11,8 +12,9 @@ class HtmlInterface {
     Geo_Y := 0
     Trans := 160
     Shown := false
+    WBEvents :=
 
-    __New(title, pageDir, dim_x, dim_y, geo_x, geo_y, trans, ByRef globalText, navigateFunction) {
+    __New(title, pageDir, dim_x, dim_y, geo_x, geo_y, trans, ByRef globalBrowser, eventClassInstance) {
         ; Check if the pageDir path is valid
         if (!FileExist(pageDir . "\body.html")||!FileExist(pageDir . "\style.css")||!FileExist(pageDir . "\script.js")) {
             MsgBox, 16, Error, %pageDir% directory does not contain the required files. Please make sure the directory is correct.
@@ -20,65 +22,75 @@ class HtmlInterface {
         }
 
         this.Title := title
-        this.GUIID := HashString(title)
+        this.GUIID := 
         this.Dim_X := dim_x
         this.Dim_Y := dim_y
         this.Geo_X := geo_x
         this.Geo_Y := geo_y
         this.Trans := trans
         
+        this.WBEvents := eventClassInstance ; Store the instance of the WB_events class
+
         ; Read HTML, CSS, and JS files
         FileRead, html, % pageDir . "\body.html"
         FileRead, css, % pageDir . "\style.css"
         FileRead, js, % pageDir . "\script.js"
         
         ; Combine HTML and CSS into a single HTML string
-        html = 
+        html =
         (
-        <style>
-        %css%
-        </style>
-        <script>
-        %js%
-        </script>
-        <body>
-        %html%
-        </body>
+        <!DOCTYPE html>
+        <html>
+            <style>
+%css%
+            </style>
+            <head>
+                <script>
+%js%         
+                </script>
+            </head>
+            <body>
+%html%
+            </body>
+        </html>
         )
-        
-        guiid := this.GUIID
-        Gui, %guiid%, New, % this.title
+
+        Gui, New, , % this.Title ; Store the HWND in title
         Gui, -Caption
-        Gui, Add, ActiveX, x%geo_x%, y%geo_y%, w%dim_x%, h%dim_y%, vglobalText, Shell.Explorer
-        globalText.Navigate("about:blank")
-        ComObjConnect(globalText, EventSinks)
-        globalText.document.write(html)
-        globalText.document.close()
-        WinSet, Transparent, trans, % this.title
+        Gui, Add, ActiveX, w%dim_x% h%dim_y% vglobalBrowser, Shell.Explorer
+
+        globalBrowser.Navigate("about:blank")
+        ComObjConnect(globalBrowser, this.WBEvents)
+        globalBrowser.document.write(html)
+        globalBrowser.document.close()
+        this.GetWindowID()
+    }
+
+    GetWindowID(){
+        title := this.Title
+        Gui, Show
+        WinGet, guiid, ID, %title%
+        this.GUIID := guiid
+        this.Hide()
     }
 
     Show() {
-        dim_x := this.Dim_X
-        dim_y := this.Dim_Y
-        title := this.Title
-        guiid := this.GUIID
-        Gui, %guiid%, Show, w%dim_x% h%dim_y%, %title%
+        guiid := this.GUIID    
+        trans := this.Trans
+        WinShow, ahk_id %guiid%
+        WinSet, Transparent, %trans%, ahk_id %guiid%
         this.Shown := true
     }
 
     Hide() {
-        guiid := this.GUIID
-        Gui, %guiid%, Hide, % this.title
+        guiid := this.GUIID      
+        WinHide, ahk_id %guiid%
         this.Shown := false
     }
 
     Destroy() {
         guiid := this.GUIID
-        Gui, %guiid%, Destroy, % this.title
+        WinClose, ahk_id guiid
     }
     
-    BeforeNavigate2(pDisp, URL, Flags, TargetFrameName, PostData, Headers, Cancel) {
-        if this.NavigateFunction
-          this.NavigateFunction.Call(pDisp, URL, Flags, TargetFrameName, PostData, Headers, Cancel)
-    }
 }
