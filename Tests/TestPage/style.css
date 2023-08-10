@@ -1,0 +1,12 @@
+body {
+  font-family: calibri;
+  font-size: 28px;
+  background-color: #000000;
+  overflow: hidden;
+}
+.red {
+  color: red;
+}
+.blue {
+  color: blue;
+}
